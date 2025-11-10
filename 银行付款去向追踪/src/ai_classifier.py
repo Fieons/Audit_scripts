@@ -59,10 +59,15 @@ class AIClassifier:
         Returns:
             Optional[str]: LLM响应结果
         """
+        print(f"    [LLM] 开始调用API...")
         if not self.api_key:
+            print(f"    [LLM] 错误: API密钥未配置")
             raise ValueError("LLM API密钥未配置，无法进行智能分类")
 
         try:
+            print(f"    [LLM] 发送请求到: {self.api_config['url']}")
+            print(f"    [LLM] 使用模型: {self.api_config['model']}")
+
             response = requests.post(
                 self.api_config["url"],
                 headers=self.api_config["headers"],
@@ -75,16 +80,26 @@ class AIClassifier:
                 timeout=10
             )
 
+            print(f"    [LLM] HTTP状态码: {response.status_code}")
+
             if response.status_code == 200:
                 result = response.json()
-                return result["choices"][0]["message"]["content"].strip()
+                llm_response = result["choices"][0]["message"]["content"].strip()
+                print(f"    [LLM] 响应内容: {llm_response}")
+                return llm_response
             else:
-                raise RuntimeError(f"LLM API调用失败: HTTP {response.status_code} - {response.text}")
+                error_msg = f"LLM API调用失败: HTTP {response.status_code} - {response.text}"
+                print(f"    [LLM] {error_msg}")
+                raise RuntimeError(error_msg)
 
         except requests.exceptions.RequestException as e:
-            raise RuntimeError(f"网络请求失败: {e}")
+            error_msg = f"网络请求失败: {e}"
+            print(f"    [LLM] {error_msg}")
+            raise RuntimeError(error_msg)
         except Exception as e:
-            raise RuntimeError(f"LLM调用异常: {e}")
+            error_msg = f"LLM调用异常: {e}"
+            print(f"    [LLM] {error_msg}")
+            raise RuntimeError(error_msg)
 
     def classify_payment_purpose(self, summary: str, account_name: str, auxiliary_item: str) -> str:
         """

@@ -169,6 +169,10 @@ class PaymentTracker:
         Returns:
             List[Dict]: 处理后的付款记录列表
         """
+        voucher_key = f"{voucher_records[0]['月']}月{voucher_records[0]['日']}日-{voucher_records[0]['凭证号']}"
+        print(f"  [凭证组] 开始处理: {voucher_key}")
+        print(f"  [凭证组] 记录数量: {len(voucher_records)}")
+
         # 分离借方和贷方记录
         debit_records = []
         credit_records = []
@@ -180,9 +184,13 @@ class PaymentTracker:
             if debit_amount > 0:
                 record['借方金额'] = debit_amount
                 debit_records.append(record)
+                print(f"  [凭证组] 借方记录: {record['摘要']} - {debit_amount}")
             elif credit_amount > 0:
                 record['贷方金额'] = credit_amount
                 credit_records.append(record)
+                print(f"  [凭证组] 贷方记录: {record['摘要']} - {credit_amount}")
+
+        print(f"  [凭证组] 借方记录数: {len(debit_records)}, 贷方记录数: {len(credit_records)}")
 
         # 判断凭证类型并采用相应的处理策略
         voucher_type = self._determine_voucher_type(debit_records, credit_records)
@@ -422,23 +430,33 @@ class PaymentTracker:
         Returns:
             Dict: 借方记录条目
         """
+        # 提取基本信息
+        department = self._extract_department(debit_record['辅助项'])
+        customer = self._extract_customer(debit_record['辅助项'])
+        person = self._extract_person(debit_record['辅助项'])
+
+        # LLM分类
+        payment_purpose = self.ai_classifier.classify_payment_purpose(
+            debit_record['摘要'],
+            debit_record['科目名称'],
+            debit_record['辅助项']
+        )
+
+        cash_flow_item = self.ai_classifier.classify_cash_flow_item(
+            debit_record['摘要'],
+            debit_record['科目名称'],
+            debit_record['辅助项']
+        )
+
         return {
             "科目名称": debit_record['科目名称'],
             "金额": amount,
             "摘要": debit_record['摘要'],
-            "部门": self._extract_department(debit_record['辅助项']),
-            "客商": self._extract_customer(debit_record['辅助项']),
-            "人员": self._extract_person(debit_record['辅助项']),
-            "款项用途分类": self.ai_classifier.classify_payment_purpose(
-                debit_record['摘要'],
-                debit_record['科目名称'],
-                debit_record['辅助项']
-            ),
-            "现金流量表项目分类": self.ai_classifier.classify_cash_flow_item(
-                debit_record['摘要'],
-                debit_record['科目名称'],
-                debit_record['辅助项']
-            )
+            "部门": department,
+            "客商": customer,
+            "人员": person,
+            "款项用途分类": payment_purpose,
+            "现金流量表项目分类": cash_flow_item
         }
 
     def process_data(self) -> bool:
@@ -465,18 +483,58 @@ class PaymentTracker:
         # 处理每个凭证组
         all_payment_records = []
         error_count = 0
+        total_groups = len(voucher_groups)
+        processed_count = 0
+
+        import time
+        start_time = time.time()
+
+        print(f"开始处理 {total_groups} 个凭证组...")
+        print("注意: 每个凭证组需要调用LLM API进行分类，可能需要较长时间")
+        print("程序正在运行中，请耐心等待...\n")
 
         for voucher_key, voucher_records in voucher_groups.items():
             try:
                 payment_records = self._process_voucher_group(voucher_records)
                 all_payment_records.extend(payment_records)
+                processed_count += 1
+
+                # 为每个凭证组显示进度条
+                progress = (processed_count / total_groups) * 100
+                current_time = time.time()
+                elapsed_time = current_time - start_time
+
+                # 计算预估剩余时间
+                if processed_count > 0:
+                    avg_time_per_group = elapsed_time / processed_count
+                    remaining_groups = total_groups - processed_count
+                    estimated_remaining_time = avg_time_per_group * remaining_groups
+
+                    if estimated_remaining_time < 60:
+                        time_str = f"{estimated_remaining_time:.0f}秒"
+                    elif estimated_remaining_time < 3600:
+                        time_str = f"{estimated_remaining_time/60:.1f}分钟"
+                    else:
+                        time_str = f"{estimated_remaining_time/3600:.1f}小时"
+
+                    # 创建进度条
+                    bar_length = 30
+                    filled_length = int(bar_length * processed_count // total_groups)
+                    bar = '█' * filled_length + '░' * (bar_length - filled_length)
+
+                    print(f"进度: [{bar}] {processed_count}/{total_groups} ({progress:.1f}%) - 预计剩余时间: {time_str}")
+                else:
+                    print(f"进度: {processed_count}/{total_groups} ({progress:.1f}%)")
+
             except Exception as e:
                 error_count += 1
                 print(f"处理凭证组 {voucher_key} 时发生错误: {e}")
                 continue
 
+        total_time = time.time() - start_time
         self.bank_payments = all_payment_records
-        print(f"生成 {len(all_payment_records)} 条付款记录")
+        print(f"\n处理完成! 生成了 {len(all_payment_records)} 条付款记录")
+        print(f"总耗时: {total_time/60:.1f}分钟")
         if error_count > 0:
             print(f"警告: 有 {error_count} 个凭证组处理失败")
 
@@ -513,26 +571,30 @@ class PaymentTracker:
 
 def main():
     """主函数"""
-    # 文件路径
-    csv_file = '../examples/序时账2025.1-9.csv'
-    json_output = '../output/银行付款去向跟踪结果.json'
+    # 文件路径 - 使用相对于当前脚本的路径
+    import os
+    script_dir = os.path.dirname(os.path.abspath(__file__))
+    project_root = os.path.dirname(script_dir)
 
-    # LLM API密钥配置
-    llm_api_key = "e0a30d02c9d8482993e0170a598694ac.6vAH1ZGmkt7WZYHM"  # 可以设置为您的API密钥，或留空使用后备分类
+    csv_file = os.path.join(project_root, 'examples', '序时账2025.1-9.csv')
+    json_output = os.path.join(project_root, 'output', '银行付款去向跟踪结果.json')
+
+    # LLM API密钥配置 - 必须配置API密钥才能运行
+    llm_api_key = "sk-91e6479fa8ad4bdf87edcfdadb256e11"  # 必须设置有效的API密钥
     # llm_api_key = "your_deepseek_api_key_here"  # 例如：DeepSeek API密钥
     llm_provider = "deepseek"  # 支持 "deepseek", "openai" 等
 
-    print("=== 银行付款去向跟踪处理程序 (支持LLM智能分类) ===")
+    print("=== 银行付款去向跟踪处理程序 (完全依赖LLM智能分类) ===")
     print(f"输入文件: {csv_file}")
     print(f"输出文件: {json_output}")
     print(f"LLM提供商: {llm_provider}")
     print(f"LLM分类: {'启用' if llm_api_key else '未配置API密钥，程序无法运行'}")
     print()
 
-    # 检查API密钥配置
+    # 检查API密钥配置 - 没有API密钥则无法运行
     if not llm_api_key:
         print("错误: 未配置LLM API密钥，无法进行智能分类")
-        print("请在main函数中设置llm_api_key变量")
+        print("请在main函数中设置有效的llm_api_key变量")
         return
 
     # 创建跟踪器实例
