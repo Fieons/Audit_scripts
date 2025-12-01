@@ -1,0 +1,41 @@
+# 自然语言查询系统配置文件
+# 测试配置 - 不需要API密钥
+
+database:
+  path: "E:/审计/脚本研究/database_transformation/accounting.db"
+  pool_size: 5
+  timeout: 30
+  echo: false
+
+api:
+  base_url: "https://api.deepseek.com/v1"
+  model: "deepseek-chat"
+  api_key: "sk-91e6479fa8ad4bdf87edcfdadb256e11"  # 用户提供的API Key
+  timeout: 30
+  max_retries: 3
+  request_interval: 1.0
+
+query:
+  cache_size: 100
+  cache_ttl: 300
+  max_results_per_page: 100
+  default_limit: 50
+  enable_cache: true
+
+security:
+  enable_sql_injection_check: false  # 暂时禁用SQL注入检查以便测试
+  max_query_complexity: 10
+  enable_data_masking: true
+
+logging:
+  level: "INFO"
+  file: "logs/query_system.log"
+  format: "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+  max_file_size: 10485760  # 10MB
+  backup_count: 5
+
+ui:
+  enable_rich_output: true
+  interactive_timeout: 300
+  history_size: 100
+  prompt_style: "bold green"
