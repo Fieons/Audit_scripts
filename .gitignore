@@ -116,5 +116,9 @@ database_transformation/nl_query/__pycache__/
 *.sqlite3
 *.sqlite
 
+# 环境变量文件
+database_transformation/nl_query/.env
+database_transformation/nl_query/nl_query.log
+
 # 临时文件
 nul

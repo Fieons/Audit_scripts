@@ -46,13 +46,13 @@ pip install -r requirements.txt
 
 ### 2. 配置设置
 
-复制环境变量配置文件：
+复制环境变量模板文件：
 
 ```bash
 cp .env.example .env
 ```
 
-编辑`.env`文件，设置以下配置：
+编辑`.env`文件，设置以下配置（注意：`.env`文件包含敏感信息，已添加到.gitignore）：
 
 ```env
 # DeepSeek API配置
