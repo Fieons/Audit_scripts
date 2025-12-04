@@ -107,3 +107,14 @@ dmypy.json
 
 # Pyre type checker
 .pyre/
+
+# 项目特定的忽略规则
+database_transformation/venv/
+database_transformation/scripts/__pycache__/
+database_transformation/nl_query/__pycache__/
+*.db
+*.sqlite3
+*.sqlite
+
+# 临时文件
+nul

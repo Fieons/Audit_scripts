@@ -1,0 +1,7 @@
+# Natural Language SQL Query Tool Dependencies
+streamlit>=1.28.0
+requests>=2.31.0
+pandas>=1.3.0
+openai>=1.0.0  # Compatible with DeepSeek API
+sqlite3
+python-dotenv>=1.0.0  # Environment variable management
