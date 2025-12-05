@@ -15,52 +15,51 @@
 
 ```
 Audit_scripts/
-├── database_transformation/     # 数据库转换主项目
-│   ├── data/                   # 原始CSV数据文件
-│   ├── database/               # 生成的SQLite数据库
-│   ├── docs/                   # 项目文档
-│   ├── nl_query/               # 自然语言查询系统
-│   ├── scripts/                # 转换脚本
-│   ├── requirements.txt        # 依赖包列表
-│   └── README.md              # 项目说明文档
-└── README.md                  # 本项目根目录说明
+├── data/                       # 原始CSV数据文件
+├── database/                   # 生成的SQLite数据库
+├── docs/                       # 项目文档
+├── nl_query/                   # 自然语言查询系统
+├── data_conversion/            # 数据库转换模块
+├── requirements.txt            # 统一依赖包列表
+├── run_data_conversion.bat     # 数据转换启动脚本（Windows）
+├── start_nl_query.bat          # 自然语言查询启动脚本（Windows）
+└── README.md                   # 本项目根目录说明
 ```
 
 ## 快速开始
 
 ### 安装依赖
 
-项目包含两个独立模块，各有自己的依赖：
+项目包含两个独立模块，使用统一的依赖文件：
 
-#### 选项1：安装所有依赖（推荐）
 ```bash
-# 安装数据库转换模块依赖
-pip install -r database_transformation/requirements.txt
+# 安装所有依赖（推荐）
+pip install -r requirements.txt
 
-# 安装自然语言查询系统依赖
-pip install -r database_transformation/nl_query/requirements.txt
+# 或按需安装特定模块的依赖
+# 数据库转换模块只需要pandas
+# 自然语言查询系统需要streamlit、openai等
 ```
-
-#### 选项2：按需安装
-- 仅使用数据库转换模块：`pip install -r database_transformation/requirements.txt`
-- 仅使用自然语言查询系统：`pip install -r database_transformation/nl_query/requirements.txt`
 
 ### 1. 数据库转换模块
 
 ```bash
-cd database_transformation/scripts
+cd data_conversion
 
 # 运行数据转换
 python csv_to_db.py --reset-db
 
 # 验证数据一致性
 python data_consistency_checker.py
+
+# 或使用Windows启动脚本（在根目录）
+../run_data_conversion.bat
 ```
 
 ### 2. 自然语言查询系统
 
 ```bash
-cd database_transformation/nl_query
+cd nl_query
 
 # 配置环境变量
 cp .env.example .env
@@ -68,17 +67,21 @@ cp .env.example .env
 
 # 启动Web应用
 streamlit run app.py
+
+# 或使用Windows启动脚本
+start_nl_query.bat
 ```
 
 ## 详细文档
 
 ### 数据库转换模块
-- [技术方案文档](database_transformation/docs/方案文档_v2.md) - 详细的技术方案和数据库设计
-- [开发说明文档](database_transformation/docs/开发说明文档.md) - 开发进度和功能说明
-- [数据查询指引](database_transformation/docs/数据查询指引.md) - SQL查询示例和使用指南
+- [技术方案文档](docs/方案文档_v2.md) - 详细的技术方案和数据库设计
+- [开发说明文档](docs/开发说明文档.md) - 开发进度和功能说明
+- [数据查询指引](docs/数据查询指引.md) - SQL查询示例和使用指南
+- [模块说明文档](docs/database_transformation_README.md) - 数据库转换模块详细说明
 
 ### 自然语言查询系统
-- [系统说明文档](database_transformation/nl_query/README.md) - 自然语言查询系统使用说明
+- [系统说明文档](nl_query/README.md) - 自然语言查询系统使用说明
 
 ## 数据统计
 
