@@ -8,12 +8,12 @@ import sys
 import tempfile
 import shutil
 
-# 添加data_conversion目录到Python路径
-sys.path.append(os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "data_conversion"))
+# 添加src/data_conversion目录到Python路径
+sys.path.append(os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "src", "data_conversion"))
 
-from db_schema import DatabaseSchema
-from data_cleaner import DataCleaner
-from auxiliary_parser import AuxiliaryParser
+from schema import DatabaseSchema
+from cleaner import DataCleaner
+from parser import AuxiliaryParser
 
 
 def test_database_schema():
@@ -160,17 +160,39 @@ def test_auxiliary_parser():
         ("【项目：广州至深圳高速公路扩建工程】【部门：工程部】", 2),
         ("", 0),
         ("无效格式", 0),
-        ("【缺少右括号", 0)
+        ("【缺少右括号", 0),
+        # 新增测试：正则表达式修复（值中包含右括号）
+        ("【托外流水号：粤和立【2022】施工【0017】号】", 1),
+        ("【托外流水号：粤和立【2021】施工【0012】号托外1】", 1),
+        ("【项目：2020年潮州市潮安区及城区普通公路桥梁技术状况检查工程检查粤东【2021】检测【0016】号】", 1),
     ]
 
     print("测试辅助项解析:")
     for input_val, expected_count in test_auxiliary:
         items = parser.parse_auxiliary_info(input_val)
         status = "[成功]" if len(items) == expected_count else "[失败]"
-        print(f"  {status} '{input_val}' -> 解析到 {len(items)} 个项")
+        print(f"  {status} '{input_val[:50]}...' -> 解析到 {len(items)} 个项")
         if items:
             for i, item in enumerate(items[:2]):  # 只显示前2个
-                print(f"    项{i+1}: 类型='{item.get('item_type')}', 值='{item.get('item_value')}'")
+                print(f"    项{i+1}: 类型='{item.get('item_type')}', 值='{item.get('item_value')[:50]}...'")
+
+    # 测试新增类型映射
+    print("\n测试新增类型映射:")
+    new_type_tests = [
+        ("【托外流水号：其他】", "external_flow_number"),
+        ("【业务类别：设计服务】", "business_category"),
+        ("【物业地址：广州市天河区】", "property_address"),
+        ("【银行档案：中国银行】", "bank_archive"),
+    ]
+
+    for input_val, expected_type in new_type_tests:
+        items = parser.parse_auxiliary_info(input_val)
+        if items:
+            actual_type = items[0].get('item_type')
+            status = "[成功]" if actual_type == expected_type else "[失败]"
+            print(f"  {status} '{input_val}' -> 类型: {actual_type} (期望: {expected_type})")
+        else:
+            print(f"  [失败] '{input_val}' -> 未解析出任何项")
 
     # 测试格式验证
     print("\n测试辅助项格式验证:")
@@ -179,13 +201,33 @@ def test_auxiliary_parser():
         ("【缺少右括号", False),
         ("】只有右括号", False),
         ("【类型1：值1】【类型2：值2】", True),
-        ("【括号不匹配】", False)
+        ("【括号不匹配】", False),
+        # 新增测试：包含右括号的值
+        ("【托外流水号：粤和立【2022】施工【0017】号】", True),
     ]
 
     for input_val, expected_valid in test_validation:
         is_valid, errors = parser.validate_auxiliary_format(input_val)
         status = "[成功]" if is_valid == expected_valid else "[失败]"
-        print(f"  {status} '{input_val}' -> 有效: {is_valid}, 错误: {errors}")
+        print(f"  {status} '{input_val[:50]}...' -> 有效: {is_valid}, 错误: {errors}")
+
+    # 测试值长度验证
+    print("\n测试值长度验证:")
+    short_parser = AuxiliaryParser(max_value_length=10)
+    length_tests = [
+        ("【项目：短项目】", False),  # 不应该被截断
+        ("【项目：这是一个很长的项目名称超过10个字符】", True),  # 应该被截断
+    ]
+
+    for input_val, expected_truncated in length_tests:
+        items = short_parser.parse_auxiliary_info(input_val)
+        if items:
+            has_warning = 'value_warning' in items[0]
+            status = "[成功]" if has_warning == expected_truncated else "[失败]"
+            trunc_msg = "（被截断）" if has_warning else "（正常）"
+            print(f"  {status} '{input_val}' -> {trunc_msg}")
+        else:
+            print(f"  [失败] '{input_val}' -> 未解析出任何项")
 
     print()
 

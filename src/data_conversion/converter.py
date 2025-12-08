@@ -12,9 +12,9 @@ from datetime import datetime
 import traceback
 
 # 导入自定义模块
-from db_schema import DatabaseSchema
-from data_cleaner import DataCleaner
-from auxiliary_parser import AuxiliaryParser
+from .schema import DatabaseSchema
+from .cleaner import DataCleaner
+from .parser import AuxiliaryParser
 
 
 class CSVToDBConverter:
@@ -327,8 +327,15 @@ class CSVToDBConverter:
 
         items = self.auxiliary_parser.parse_auxiliary_info(auxiliary_text)
         inserted_count = 0
+        truncation_count = 0
 
         for item in items:
+            # 检查是否有值截断警告
+            if 'value_warning' in item:
+                truncation_count += 1
+                # 记录截断警告
+                print(f"[数据转换警告] 辅助项值被截断: {item['value_warning']}")
+
             cursor.execute(
                 """INSERT INTO auxiliary_items
                    (detail_id, item_type, item_name, item_value)
@@ -341,6 +348,11 @@ class CSVToDBConverter:
                 )
             )
             inserted_count += 1
+
+        # 记录数据质量统计
+        if truncation_count > 0:
+            print(f"[数据转换统计] 辅助项处理完成: 插入 {inserted_count} 项, "
+                  f"其中 {truncation_count} 项值被截断")
 
         return inserted_count
 

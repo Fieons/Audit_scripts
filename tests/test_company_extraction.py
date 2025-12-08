@@ -6,10 +6,10 @@
 
 import sys
 import os
-sys.path.append(os.path.dirname(os.path.abspath(__file__)))
+sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), ".."))
 
-from data_conversion.data_cleaner import DataCleaner
-from data_conversion.data_consistency_checker import DataConsistencyChecker
+from src.data_conversion.cleaner import DataCleaner
+from src.data_conversion.validator import DataConsistencyChecker
 
 def test_company_extraction():
     """测试公司信息提取逻辑"""
@@ -97,7 +97,7 @@ if __name__ == "__main__":
     test_similar_company_detection()
 
     print("\n[修复验证]")
-    print("✓ 已修复 data_consistency_checker._extract_company_from_filename 方法")
-    print("✓ 该方法现在返回'未知'，避免使用错误的简化公司名称")
-    print("✓ 实际一致性检查使用CSV文件中的核算账簿名称提取完整公司名称")
-    print("✓ 相似公司名称检测逻辑已添加到 _load_data_from_db 方法中")
+    print("[OK] 已修复 data_consistency_checker._extract_company_from_filename 方法")
+    print("[OK] 该方法现在返回'未知'，避免使用错误的简化公司名称")
+    print("[OK] 实际一致性检查使用CSV文件中的核算账簿名称提取完整公司名称")
+    print("[OK] 相似公司名称检测逻辑已添加到 _load_data_from_db 方法中")

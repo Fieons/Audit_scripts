@@ -11,7 +11,7 @@ from dotenv import load_dotenv
 load_dotenv()
 
 # 项目根目录
-PROJECT_ROOT = Path(__file__).parent.parent
+PROJECT_ROOT = Path(__file__).parent.parent.parent
 NL_QUERY_ROOT = Path(__file__).parent
 
 # DeepSeek API配置
@@ -31,6 +31,14 @@ MAX_SQL_LENGTH = int(os.getenv("MAX_SQL_LENGTH", "5000"))
 CACHE_ENABLED = os.getenv("CACHE_ENABLED", "true").lower() == "true"
 CACHE_MAX_SIZE = int(os.getenv("CACHE_MAX_SIZE", "100"))
 CACHE_TTL = int(os.getenv("CACHE_TTL", "3600"))  # 秒
+
+# 聊天配置
+CHAT_MAX_HISTORY = int(os.getenv("CHAT_MAX_HISTORY", "10"))  # 最大对话历史轮数
+CHAT_TEMPERATURE = float(os.getenv("CHAT_TEMPERATURE", "0.7"))  # 聊天温度
+CHAT_MAX_TOKENS = int(os.getenv("CHAT_MAX_TOKENS", "1000"))  # 聊天最大token数
+
+# 上下文配置
+CONTEXT_SUMMARY_MAX_LENGTH = int(os.getenv("CONTEXT_SUMMARY_MAX_LENGTH", "500"))  # 上下文摘要最大长度
 
 # 安全配置
 ALLOWED_SQL_KEYWORDS = ["SELECT", "WITH", "FROM", "WHERE", "JOIN", "GROUP BY",
@@ -76,6 +84,8 @@ def get_config_summary():
         "query_timeout": QUERY_TIMEOUT,
         "cache_enabled": CACHE_ENABLED,
         "cache_max_size": CACHE_MAX_SIZE,
+        "chat_max_history": CHAT_MAX_HISTORY,
+        "chat_temperature": CHAT_TEMPERATURE,
         "log_level": LOG_LEVEL
     }
 

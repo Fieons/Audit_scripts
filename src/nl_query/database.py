@@ -10,7 +10,7 @@ import logging
 from pathlib import Path
 import time
 
-from config import DATABASE_PATH, MAX_RESULTS, QUERY_TIMEOUT
+from .config import DATABASE_PATH, MAX_RESULTS, QUERY_TIMEOUT
 
 logger = logging.getLogger(__name__)
 
@@ -246,7 +246,7 @@ END DESC;""",
         sql_upper = sql.upper()
 
         # 检查是否包含禁止的关键字
-        from config import FORBIDDEN_SQL_KEYWORDS
+        from .config import FORBIDDEN_SQL_KEYWORDS
         for keyword in FORBIDDEN_SQL_KEYWORDS:
             if keyword in sql_upper:
                 raise DatabaseError(f"SQL包含禁止的操作: {keyword}")

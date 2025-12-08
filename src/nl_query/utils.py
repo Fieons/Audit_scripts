@@ -223,55 +223,6 @@ def load_query_result(filepath: str) -> Dict[str, Any]:
 
     return data
 
-def create_example_queries() -> List[Dict[str, str]]:
-    """
-    创建示例查询列表
-
-    Returns:
-        示例查询列表
-    """
-    return [
-        {
-            "title": "公司信息查询",
-            "query": "查询所有公司信息",
-            "description": "获取数据库中的所有公司基本信息"
-        },
-        {
-            "title": "凭证流水查询",
-            "query": "查看2024年和立公司的凭证流水，按日期倒序排列",
-            "description": "查询指定公司的凭证记录，支持时间筛选和排序"
-        },
-        {
-            "title": "科目余额分析",
-            "query": "统计管理费用科目的借方发生额和贷方发生额",
-            "description": "分析特定科目的借贷方发生额"
-        },
-        {
-            "title": "大额交易检测",
-            "query": "查找2024年100万以上的大额交易",
-            "description": "检测大额交易，用于审计分析"
-        },
-        {
-            "title": "部门费用分摊",
-            "query": "分析各部门的费用分摊情况",
-            "description": "按部门统计费用分摊比例"
-        },
-        {
-            "title": "项目资金流水",
-            "query": "查询高速公路维修项目的资金流水",
-            "description": "跟踪特定项目的资金流入流出情况"
-        },
-        {
-            "title": "供应商往来分析",
-            "query": "分析和立公司与供应商的往来情况",
-            "description": "分析供应商交易金额和频次"
-        },
-        {
-            "title": "月度费用趋势",
-            "query": "分析2024年每月管理费用的变化趋势",
-            "description": "查看费用的月度变化趋势"
-        }
-    ]
 
 def validate_natural_language_query(query: str) -> Tuple[bool, str]:
     """
@@ -301,48 +252,6 @@ def validate_natural_language_query(query: str) -> Tuple[bool, str]:
 
     return True, ""
 
-class QueryHistory:
-    """查询历史管理"""
-
-    def __init__(self, max_history: int = 50):
-        self.max_history = max_history
-        self.history = []
-
-    def add_query(self, natural_language: str, sql: str, result_metadata: Dict[str, Any]):
-        """添加查询到历史"""
-        history_item = {
-            "id": len(self.history) + 1,
-            "timestamp": datetime.now().isoformat(),
-            "natural_language": natural_language,
-            "sql": sql,
-            "result_metadata": result_metadata,
-            "success": result_metadata.get("success", False)
-        }
-
-        self.history.insert(0, history_item)  # 添加到开头
-
-        # 限制历史记录数量
-        if len(self.history) > self.max_history:
-            self.history = self.history[:self.max_history]
-
-    def get_recent_queries(self, limit: int = 10) -> List[Dict[str, Any]]:
-        """获取最近的查询"""
-        return self.history[:limit]
-
-    def clear_history(self):
-        """清空历史记录"""
-        self.history = []
-
-    def save_to_file(self, filepath: str):
-        """保存历史记录到文件"""
-        with open(filepath, 'w', encoding='utf-8') as f:
-            json.dump(self.history, f, ensure_ascii=False, indent=2)
-
-    def load_from_file(self, filepath: str):
-        """从文件加载历史记录"""
-        if Path(filepath).exists():
-            with open(filepath, 'r', encoding='utf-8') as f:
-                self.history = json.load(f)
 
 if __name__ == "__main__":
     # 测试工具函数
@@ -366,8 +275,3 @@ if __name__ == "__main__":
     md5_hash = calculate_md5(text)
     print(f"\nMD5哈希: {md5_hash}")
 
-    # 测试示例查询
-    examples = create_example_queries()
-    print(f"\n示例查询数量: {len(examples)}")
-    for example in examples[:3]:
-        print(f"  - {example['title']}: {example['query']}")

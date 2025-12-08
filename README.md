@@ -14,62 +14,123 @@
 ## 项目结构
 
 ```
-Audit_scripts/
+审计凭证数据处理与分析系统/
+├── src/                        # 源代码包
+│   ├── nl_query/              # 自然语言查询系统
+│   │   ├── clients/           # LLM客户端模块
+│   │   ├── app.py             # Streamlit主应用
+│   │   ├── config.py          # 配置管理
+│   │   ├── database.py        # 数据库管理
+│   │   ├── generator.py       # SQL生成器
+│   │   └── utils.py           # 工具函数
+│   └── data_conversion/       # 数据转换模块
+│       ├── converter.py       # 主转换器
+│       ├── schema.py          # 数据库模式
+│       ├── cleaner.py         # 数据清洗
+│       ├── parser.py          # 辅助项解析
+│       └── validator.py       # 数据验证
 ├── data/                       # 原始CSV数据文件
 ├── database/                   # 生成的SQLite数据库
 ├── docs/                       # 项目文档
-├── nl_query/                   # 自然语言查询系统
-├── data_conversion/            # 数据库转换模块
+├── configs/                    # 配置文件目录
+├── tests/                      # 测试文件目录
+├── venv/                       # Python虚拟环境
+├── start.bat                   # Windows启动脚本（推荐）
+├── start.sh                    # Linux启动脚本（推荐）
+├── pyproject.toml             # Python项目配置
 ├── requirements.txt            # 统一依赖包列表
-├── run_data_conversion.bat     # 数据转换启动脚本（Windows）
-├── start_nl_query.bat          # 自然语言查询启动脚本（Windows）
+├── .pre-commit-config.yaml    # 预提交钩子配置
 └── README.md                   # 本项目根目录说明
 ```
 
 ## 快速开始
 
-### 安装依赖
+### 环境准备
 
-项目包含两个独立模块，使用统一的依赖文件：
-
+1. **创建虚拟环境**（如果尚未创建）：
 ```bash
-# 安装所有依赖（推荐）
-pip install -r requirements.txt
+# Windows
+python -m venv venv
 
-# 或按需安装特定模块的依赖
-# 数据库转换模块只需要pandas
-# 自然语言查询系统需要streamlit、openai等
+# Linux/Mac
+python3 -m venv venv
 ```
 
-### 1. 数据库转换模块
-
+2. **激活虚拟环境**：
 ```bash
-cd data_conversion
+# Windows
+venv\Scripts\activate
+
+# Linux/Mac
+source venv/bin/activate
+```
+
+3. **安装依赖**：
+```bash
+pip install -r requirements.txt
+```
+
+### 使用启动脚本（推荐）
+
+项目根目录提供了统一的启动脚本：
+
+#### Windows:
+```bash
+# 在项目根目录运行
+start.bat
+```
+
+#### Linux/Mac:
+```bash
+# 在项目根目录运行
+chmod +x start.sh  # 首次运行需要给执行权限
+./start.sh
+```
+
+启动脚本提供以下功能：
+1. **自然语言查询系统** - Streamlit Web界面
+2. **数据库转换工具** - 命令行工具
+3. **运行测试** - 执行项目测试
+4. **检查依赖** - 查看已安装的包
+
+### 手动启动方式
+
+#### 1. 自然语言查询系统
+```bash
+# 激活虚拟环境后
+streamlit run src/nl_query/app.py
+```
+
+#### 2. 数据库转换模块
+```bash
+# 查看帮助
+python -m src.data_conversion.converter --help
 
 # 运行数据转换
-python csv_to_db.py --reset-db
+python -m src.data_conversion.converter --reset-db
 
 # 验证数据一致性
-python data_consistency_checker.py
-
-# 或使用Windows启动脚本（在根目录）
-../run_data_conversion.bat
+python -m src.data_conversion.validator
+```
 ```
 
 ### 2. 自然语言查询系统
 
 ```bash
-cd nl_query
+# 配置环境变量（使用新的配置文件位置）
+cp configs/.env.example configs/.env
+# 编辑 configs/.env 文件，设置API密钥
 
-# 配置环境变量
-cp .env.example .env
-# 编辑.env文件，设置API密钥
+# 启动Web应用（推荐使用启动脚本）
+# Windows:
+start.bat
 
-# 启动Web应用
-streamlit run app.py
+# Linux/Mac:
+chmod +x start.sh
+./start.sh
 
-# 或使用Windows启动脚本
-start_nl_query.bat
+# 或手动启动：
+streamlit run src/nl_query/app.py
 ```
 
 ## 详细文档
@@ -82,6 +143,7 @@ start_nl_query.bat
 
 ### 自然语言查询系统
 - [系统说明文档](nl_query/README.md) - 自然语言查询系统使用说明
+- [聊天功能说明](nl_query/CHAT_FEATURE_README.md) - 聊天功能增强版使用说明
 
 ## 数据统计
 

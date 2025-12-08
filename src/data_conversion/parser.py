@@ -11,8 +11,16 @@ import pandas as pd
 class AuxiliaryParser:
     """辅助项解析器"""
 
-    def __init__(self):
-        """初始化解析器"""
+    def __init__(self, max_value_length: int = 10000):
+        """
+        初始化解析器
+
+        Args:
+            max_value_length: 辅助项值的最大长度限制，超过此长度会记录警告
+        """
+        # 辅助项值的最大长度限制
+        self.max_value_length = max_value_length
+
         # 辅助项类型映射，用于标准化
         self.type_mapping = {
             '客商': 'supplier_customer',
@@ -33,11 +41,33 @@ class AuxiliaryParser:
             '现金流量项目': 'cash_flow_item',
             '业务员': 'salesman',
             '存货': 'inventory',
-            '自定义项': 'custom_item'
+            '自定义项': 'custom_item',
+            # 新增类型映射（修复数据转换问题）
+            '托外流水号': 'external_flow_number',
+            '外部流水号': 'external_flow_number',
+            '流水号': 'flow_number',
+            '业务类别': 'business_category',
+            '物业地址': 'property_address',
+            '银行档案': 'bank_archive',
+            '合同编号': 'contract_number',
+            '发票号码': 'invoice_number',
+            '收款单位': 'receiving_unit',
+            '付款单位': 'paying_unit',
+            '施工编号': 'construction_number',
+            '项目编号': 'project_number',
+            '档案编号': 'archive_number'
         }
 
         # 反向映射，用于显示
-        self.reverse_mapping = {v: k for k, v in self.type_mapping.items()}
+        # 注意：当多个键映射到同一个值时，我们优先使用更具体/更常见的键
+        self.reverse_mapping = {}
+        for k, v in self.type_mapping.items():
+            # 对于external_flow_number，优先使用"托外流水号"而不是"外部流水号"
+            if v == 'external_flow_number' and k == '托外流水号':
+                self.reverse_mapping[v] = k
+            # 对于其他类型，使用第一个遇到的映射（保持原有逻辑）
+            elif v not in self.reverse_mapping:
+                self.reverse_mapping[v] = k
 
     def parse_auxiliary_info(self, text: str) -> List[Dict[str, str]]:
         """
@@ -55,25 +85,84 @@ class AuxiliaryParser:
 
         text_str = str(text).strip()
 
-        # 使用正则表达式匹配【类型：值】格式
-        # 方案文档5.3节的正则表达式：r'【([^：]+)：([^】]+)】'
-        pattern = r'【([^：]+)：([^】]+)】'
-        matches = re.findall(pattern, text_str)
+        # 使用新的手动解析方法，正确处理值中包含右括号的情况
+        items = self._parse_auxiliary_manual(text_str)
 
+        return items
+
+    def _parse_auxiliary_manual(self, text: str) -> List[Dict[str, str]]:
+        """
+        手动解析辅助项，正确处理值中包含右括号的情况
+
+        Args:
+            text: 辅助项文本
+
+        Returns:
+            解析后的辅助项列表
+        """
         items = []
-        for match in matches:
-            raw_type = match[0].strip()
-            raw_value = match[1].strip()
+        i = 0
+        n = len(text)
 
-            # 标准化类型
-            standardized_type = self._standardize_type(raw_type)
+        while i < n:
+            # 寻找左括号
+            if text[i] == '【':
+                start = i
+                i += 1
 
-            items.append({
-                'raw_type': raw_type,
-                'item_type': standardized_type,
-                'item_value': raw_value,
-                'display_type': self.reverse_mapping.get(standardized_type, raw_type)
-            })
+                # 寻找冒号
+                colon_pos = -1
+                while i < n and colon_pos == -1:
+                    if text[i] == '：':
+                        colon_pos = i
+                    i += 1
+
+                if colon_pos == -1:
+                    # 没有找到冒号，跳过
+                    break
+
+                item_type = text[start+1:colon_pos].strip()
+                value_start = colon_pos + 1
+
+                # 寻找匹配的右括号
+                bracket_count = 1
+                while i < n and bracket_count > 0:
+                    if text[i] == '【':
+                        bracket_count += 1
+                    elif text[i] == '】':
+                        bracket_count -= 1
+                    i += 1
+
+                if bracket_count == 0:
+                    # 找到了匹配的右括号
+                    item_value = text[value_start:i-1].strip()
+
+                    # 标准化类型
+                    standardized_type = self._standardize_type(item_type)
+
+                    # 验证和截断值长度
+                    validated_value, was_truncated, warning_msg = self._validate_and_truncate_value(
+                        item_value, standardized_type
+                    )
+
+                    item_data = {
+                        'raw_type': item_type,
+                        'item_type': standardized_type,
+                        'item_value': validated_value,
+                        'display_type': self.reverse_mapping.get(standardized_type, item_type)
+                    }
+
+                    # 如果值被截断，添加警告信息
+                    if was_truncated:
+                        item_data['value_warning'] = warning_msg
+                        print(f"[警告] 辅助项值被截断: {warning_msg}")
+
+                    items.append(item_data)
+                else:
+                    # 括号不匹配，跳过
+                    break
+            else:
+                i += 1
 
         return items
 
@@ -98,6 +187,69 @@ class AuxiliaryParser:
 
         # 默认返回原始类型的小写形式
         return raw_type.lower().replace(' ', '_')
+
+    def _validate_and_truncate_value(self, value: str, item_type: str) -> Tuple[str, bool, str]:
+        """
+        验证和截断辅助项值长度
+
+        Args:
+            value: 原始值
+            item_type: 辅助项类型
+
+        Returns:
+            (处理后的值, 是否被截断, 警告消息)
+        """
+        if not value:
+            return value, False, ""
+
+        # 检查长度
+        if len(value) <= self.max_value_length:
+            return value, False, ""
+
+        # 值过长，需要截断
+        truncated_value = value[:self.max_value_length]
+
+        # 确保不截断在特殊字符中间（如括号、冒号）
+        # 检查截断后的最后一个字符是否是特殊字符
+        special_chars = ['【', '】', ':', '：']
+        if truncated_value and truncated_value[-1] in special_chars:
+            # 向前查找，直到找到非特殊字符
+            last_valid_index = len(truncated_value) - 2  # 从倒数第二个字符开始
+            while last_valid_index >= 0 and truncated_value[last_valid_index] in special_chars:
+                last_valid_index -= 1
+
+            if last_valid_index >= 0:
+                # 找到非特殊字符，在此处截断
+                truncated_value = truncated_value[:last_valid_index + 1]
+            else:
+                # 全部都是特殊字符，保留原始截断
+                pass
+
+        warning_msg = (
+            f"辅助项值过长被截断: 类型='{item_type}', "
+            f"原始长度={len(value)}, 截断后长度={len(truncated_value)}, "
+            f"截断内容='{truncated_value[-50:]}...'"
+        )
+
+        return truncated_value, True, warning_msg
+
+    def validate_item_value_length(self, value: str) -> Tuple[bool, str]:
+        """
+        验证辅助项值长度是否在限制范围内
+
+        Args:
+            value: 要验证的值
+
+        Returns:
+            (是否有效, 错误消息)
+        """
+        if not value:
+            return True, ""
+
+        if len(value) > self.max_value_length:
+            return False, f"值长度 {len(value)} 超过最大限制 {self.max_value_length}"
+
+        return True, ""
 
     def extract_specific_items(self, text: str, target_types: List[str]) -> Dict[str, List[str]]:
         """
@@ -214,14 +366,13 @@ class AuxiliaryParser:
         if open_brackets != close_brackets:
             errors.append(f"括号不匹配：{open_brackets}个【 vs {close_brackets}个】")
 
-        # 检查格式是否正确
-        pattern = r'【([^：]+)：([^】]+)】'
-        matches = re.findall(pattern, text_str)
+        # 检查格式是否正确 - 使用手动解析方法
+        items = self._parse_auxiliary_manual(text_str)
 
-        # 计算应该匹配的数量
-        expected_matches = min(open_brackets, close_brackets)
-        if len(matches) != expected_matches:
-            errors.append(f"格式解析失败：找到 {len(matches)} 个有效项，预期 {expected_matches} 个")
+        # 计算应该匹配的数量（考虑值中可能包含的括号）
+        # 简单估计：每个辅助项至少有一对括号
+        if len(items) < open_brackets:
+            errors.append(f"格式解析失败：找到 {len(items)} 个有效项，但文本中有 {open_brackets} 个左括号")
 
         return len(errors) == 0, errors
 

@@ -66,7 +66,7 @@ class DatabaseSchema:
                     id INTEGER PRIMARY KEY AUTOINCREMENT,
                     code VARCHAR(20) NOT NULL UNIQUE,
                     name VARCHAR(200) NOT NULL,
-                    full_name VARCHAR(500),
+                    full_name TEXT,  -- 修复：从VARCHAR(500)改为TEXT，避免数据截断
                     level INTEGER,
                     subject_type VARCHAR(20),
                     normal_balance VARCHAR(10)
@@ -116,7 +116,7 @@ class DatabaseSchema:
                     detail_id INTEGER NOT NULL,
                     item_type VARCHAR(50) NOT NULL,
                     item_name VARCHAR(100),
-                    item_value VARCHAR(500) NOT NULL,
+                    item_value TEXT NOT NULL,  -- 修复：从VARCHAR(500)改为TEXT，避免数据截断
                     FOREIGN KEY (detail_id) REFERENCES voucher_details(id) ON DELETE CASCADE
                 )
             """)
@@ -126,7 +126,7 @@ class DatabaseSchema:
                 CREATE TABLE IF NOT EXISTS projects (
                     id INTEGER PRIMARY KEY AUTOINCREMENT,
                     project_code VARCHAR(50) UNIQUE,
-                    project_name VARCHAR(200) NOT NULL,
+                    project_name VARCHAR(500) NOT NULL,  -- 修复：从VARCHAR(200)改为VARCHAR(500)，避免数据截断
                     company_id INTEGER,
                     FOREIGN KEY (company_id) REFERENCES companies(id)
                 )

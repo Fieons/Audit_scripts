@@ -8,9 +8,9 @@ from typing import Optional, Dict, Any, Tuple
 from functools import lru_cache
 import time
 
-from database import DatabaseManager, format_schema_for_prompt, format_examples_for_prompt
-from deepseek_client import DeepSeekClient, DeepSeekError
-from config import CACHE_ENABLED, CACHE_MAX_SIZE, CACHE_TTL
+from .database import DatabaseManager, format_schema_for_prompt, format_examples_for_prompt
+from .clients.sql_generation import SQLGenerationClient, SQLGenerationError
+from .config import CACHE_ENABLED, CACHE_MAX_SIZE, CACHE_TTL
 
 logger = logging.getLogger(__name__)
 
@@ -21,9 +21,9 @@ class SQLGenerationError(Exception):
 class SQLGenerator:
     """SQL生成器"""
 
-    def __init__(self, db_manager: DatabaseManager = None, deepseek_client: DeepSeekClient = None):
+    def __init__(self, db_manager: DatabaseManager = None, sql_generation_client: SQLGenerationClient = None):
         self.db_manager = db_manager or DatabaseManager()
-        self.deepseek_client = deepseek_client or DeepSeekClient()
+        self.sql_generation_client = sql_generation_client or SQLGenerationClient()
 
         # 缓存schema和示例
         self._schema_info = None
@@ -66,7 +66,7 @@ class SQLGenerator:
             examples = self._get_examples()
 
             # 生成SQL
-            sql = self.deepseek_client.generate_sql(
+            sql = self.sql_generation_client.generate_sql(
                 natural_language=natural_language,
                 schema_info=self._schema_prompt,
                 examples=self._examples_prompt
@@ -250,20 +250,63 @@ class SQLGenerator:
         # LRU缓存自动管理
         pass
 
-    def get_stats(self) -> Dict[str, Any]:
-        """获取生成器统计信息"""
-        success_rate = (self.success_count / self.generation_count * 100) if self.generation_count > 0 else 0
-        avg_time = (self.total_time / self.success_count) if self.success_count > 0 else 0
+    def get_current_context(self, natural_language: str = None, sql: str = None,
+                          result=None, metadata: Dict[str, Any] = None) -> Dict[str, Any]:
+        """
+        获取当前查询的上下文信息
 
-        return {
-            "generation_count": self.generation_count,
-            "success_count": self.success_count,
-            "success_rate": f"{success_rate:.1f}%",
-            "total_time": f"{self.total_time:.2f}秒",
-            "average_time": f"{avg_time:.2f}秒",
-            "cache_enabled": CACHE_ENABLED,
-            "cache_max_size": CACHE_MAX_SIZE
+        Args:
+            natural_language: 自然语言查询（如果不提供，使用最近的状态）
+            sql: 生成的SQL（如果不提供，使用最近的状态）
+            result: 查询结果（DataFrame）
+            metadata: 查询元数据
+
+        Returns:
+            上下文信息字典
+        """
+        context = {
+            "natural_language_query": natural_language or "",
+            "generated_sql": sql or "",
+            "query_execution_time": 0.0,
+            "query_result_shape": {"rows": 0, "columns": 0},
+            "query_result_summary": ""
         }
+
+        if metadata:
+            if "total_time" in metadata:
+                context["query_execution_time"] = metadata["total_time"]
+            if "result_shape" in metadata:
+                context["query_result_shape"] = metadata["result_shape"]
+
+        if result is not None:
+            try:
+                # 生成结果摘要
+                if hasattr(result, 'shape'):
+                    rows, cols = result.shape
+                    context["query_result_shape"] = {"rows": rows, "columns": cols}
+
+                    # 简单的摘要：前几行数据
+                    if rows > 0:
+                        if cols <= 5:  # 列数少时显示所有列
+                            summary_parts = []
+                            for col in result.columns[:3]:  # 最多3列
+                                if result[col].dtype in ['int64', 'float64']:
+                                    summary = f"{col}: {result[col].iloc[0]}..."
+                                else:
+                                    summary = f"{col}: {str(result[col].iloc[0])[:20]}..."
+                                summary_parts.append(summary)
+                            context["query_result_summary"] = "; ".join(summary_parts)
+                        else:
+                            context["query_result_summary"] = f"共{rows}行{cols}列数据"
+                else:
+                    context["query_result_summary"] = f"结果类型: {type(result).__name__}"
+
+            except Exception as e:
+                logger.warning(f"生成结果摘要失败: {e}")
+                context["query_result_summary"] = "结果摘要生成失败"
+
+        return context
+
 
     def test_connection(self) -> Dict[str, bool]:
         """测试所有连接"""
@@ -278,7 +321,7 @@ class SQLGenerator:
 
         # 测试API连接
         try:
-            results["deepseek_api"] = self.deepseek_client.test_connection()
+            results["deepseek_api"] = self.sql_generation_client.test_connection()
         except Exception as e:
             logger.error(f"API连接测试失败: {e}")
             results["deepseek_api"] = False
@@ -351,11 +394,6 @@ if __name__ == "__main__":
             except Exception as e:
                 print(f"测试失败: {e}")
 
-        # 显示统计信息
-        stats = generator.get_stats()
-        print(f"\n生成器统计:")
-        for key, value in stats.items():
-            print(f"  {key}: {value}")
 
     else:
         print("\n连接测试失败，请检查配置")

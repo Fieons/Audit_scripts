@@ -12,8 +12,8 @@ def demo_basic_functionality():
     print("自然语言SQL查询工具 - 功能演示")
     print("=" * 60)
 
-    from sql_generator import SQLGenerator
-    from utils import validate_natural_language_query
+    from .generator import SQLGenerator
+    from .utils import validate_natural_language_query
 
     # 初始化
     print("\n1. 初始化SQL生成器...")
@@ -61,22 +61,10 @@ def demo_basic_functionality():
         if not is_valid:
             print(f"     原因: {msg}")
 
-    # 演示查询历史
-    print("\n5. 演示查询历史功能...")
-    from utils import QueryHistory
-
-    history = QueryHistory(max_history=3)
-    history.add_query("查询公司", "SELECT * FROM companies", {"success": True})
-    history.add_query("查询凭证", "SELECT * FROM vouchers LIMIT 5", {"success": True})
-
-    recent = history.get_recent_queries()
-    print(f"   历史记录数量: {len(recent)}")
-    for i, query in enumerate(recent, 1):
-        print(f"   {i}. {query['natural_language'][:30]}...")
 
     # 显示配置信息
     print("\n6. 系统配置信息...")
-    from config import get_config_summary
+    from .config import get_config_summary
     summary = get_config_summary()
 
     important_keys = ['database_path', 'max_results', 'query_timeout', 'cache_enabled']

@@ -18,8 +18,8 @@ getcontext().prec = 28  # 高精度计算
 
 # 导入自定义模块
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
-from data_cleaner import DataCleaner
-from auxiliary_parser import AuxiliaryParser
+from .cleaner import DataCleaner
+from .parser import AuxiliaryParser
 
 
 class DataConsistencyChecker:
