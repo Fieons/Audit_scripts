@@ -76,7 +76,7 @@ def demo_basic_functionality():
     print("演示完成!")
     print("\n下一步:")
     print("1. 确保所有连接测试成功")
-    print("2. 运行启动脚本: start_app.bat")
+    print("2. 运行启动脚本: python start_nl_query.py")
     print("3. 在浏览器中访问: http://localhost:8501")
     print("4. 尝试自然语言查询，如: '查询所有公司信息'")
     print("=" * 60)
